@@ -16,7 +16,7 @@ with the standard libs build and installed.
 ```shell
 cd firmware
 make all
-cd helloworld
+cd ../helloworld
 ROSCO_M68K_DIR=/path/to/your/rosco_m68k make all
 cd ..
 cmake .

@@ -18,6 +18,8 @@ cd firmware
 make all
 cd ../helloworld
 ROSCO_M68K_DIR=/path/to/your/rosco_m68k make all
+cd ../musashi
+make
 cd ..
 cmake .
 make all

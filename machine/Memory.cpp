@@ -92,6 +92,11 @@ namespace rosco {
 
             void Memory::LoadData(std::uint32_t baseAddr, char const* filename) {
                 std::ifstream ifs(filename, std::ios::binary | std::ios::ate);
+
+                if (!ifs) {
+                    throw std::runtime_error("Failed to open ROM");
+                }
+
                 std::ifstream::pos_type pos = ifs.tellg();
 
                 if (pos > this->size) {
@@ -100,6 +105,7 @@ namespace rosco {
                     ifs.seekg(0, std::ios::beg);
                     ifs.read((char*)&this->store[baseAddr], pos);
                 }
+
             }
 
         }

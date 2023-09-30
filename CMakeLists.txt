@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.6)
 project(r68k)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 link_directories(machine musashi rosco-m68k-glue)

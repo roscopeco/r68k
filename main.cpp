@@ -1,4 +1,5 @@
 #include <iostream>
+#include <filesystem>
 #include <stdint.h>
 #include "musashi/m68k.h"
 #include "musashi/m68kcpu.h"
@@ -73,7 +74,10 @@ int main(int argc, char** argv) {
 		cout << "Usage: xl86 <binary>" << endl;
 		return 1;
 	} else {
-		__mem = new rosco::m68k::emu::AddressDecoder(0x40000, 0x100000, "firmware/rosco_m68k.rom");
+		std::filesystem::path path = std::filesystem::path(argv[0]).parent_path();
+		path += "/firmware/rosco_m68k.rom";
+
+		__mem = new rosco::m68k::emu::AddressDecoder(0x40000, 0x100000, path.string().c_str());
 		__mem->LoadMemoryFile(0x40000, argv[1]);
 
 		m68k_set_cpu_type(M68K_CPU_TYPE_68010);

@@ -6,6 +6,7 @@
 **/*.rom
 **/*.sym
 r68k
+build
 cmake-build-*
 CMakeLists.txt.user
 CMakeCache.txt

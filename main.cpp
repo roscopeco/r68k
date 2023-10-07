@@ -1,11 +1,18 @@
 #include <iostream>
 #include <filesystem>
 #include <stdint.h>
+#include <unistd.h>
+#include <thread>
+#include <atomic>
+
 #include "musashi/m68k.h"
 #include "musashi/m68kcpu.h"
 #include "AddressDecoder.h"
 
 using namespace std;
+
+#define DUART_IRQ	4
+#define DUART_VEC	0x45
 
 extern "C" {
 	rosco::m68k::emu::AddressDecoder* __mem;
@@ -67,6 +74,33 @@ extern "C" {
 
 		return 1;
 	}
+
+	int interrupt_ack_handler(unsigned int irq) {
+		switch (irq) {
+		case DUART_IRQ:
+			// DUART timer tick - vector to 0x45
+			m68k_set_irq(0);
+			return DUART_VEC;
+		default:
+			cerr << "WARN: Unexpected IRQ " << irq << "; Autovectoring, but machine will probably lock up!" << endl;
+			return M68K_INT_ACK_AUTOVECTOR;
+		}
+	}
+}
+
+std::atomic_bool is_done;
+
+void timer_interrupt() {
+	int i = 100;
+
+	while (!is_done) {
+		if (i++ == 100) {
+			m68k_set_irq(DUART_IRQ);
+			i = 0;
+		}
+
+		usleep(100);
+	}
 }
 
 int main(int argc, char** argv) {
@@ -109,11 +143,15 @@ int main(int argc, char** argv) {
 		cout << "D7          : 0x" << m68k_get_reg(&ctx, M68K_REG_D7) << endl << endl;
 #		endif
 
+		std::thread timer_thread(timer_interrupt);
 		int cycles = 0;
 		while (!ctx.stopped) {
 			cycles += m68k_execute(100000);
 			m68k_get_context(&ctx);
 		}
+
+		is_done = true;
+		timer_thread.join();
 
 #ifdef	DEBUG
 		cout << endl;

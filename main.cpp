@@ -202,7 +202,7 @@ int main(int argc, char** argv) {
 		
 		std::thread timer_thread(timer_interrupt);
 		int cycles = 0;
-		while (1) { //!ctx.stopped) {
+		while (!ctx.stopped) {
 			cycles += m68k_execute(100000);
 			m68k_get_context(&ctx);
 		}

@@ -149,11 +149,11 @@ INITEFPT:
     move.l  #XL_PRINTLN,EFP_PRINTLN
     move.l  #XL_PRINTCHAR,EFP_PRINTCHAR
     move.l  #EFP_DUMMY_NOOP,EFP_SENDCHAR
-    move.l  #EFP_DUMMY_LOOP,EFP_RECVCHAR
+    move.l  #XL_RECVCHAR,EFP_RECVCHAR
     move.l  #EFP_DUMMY_NOOP,EFP_CLRSCR
     move.l  #EFP_DUMMY_NOOP,EFP_MOVEXY
     move.l  #EFP_DUMMY_NOOP,EFP_SETCURSOR
-    move.l  #EFP_DUMMY_ZERO_D0B,EFP_CHECKCHAR
+    move.l  #XL_CHECKCHAR,EFP_CHECKCHAR
 
     ; Block Device IO Routines - SD
     move.l  #EFP_DUMMY_NEGONE_D0L,EFP_SD_INIT
@@ -241,6 +241,24 @@ XL_EXIT:
     move.l  #$F0F0F0F3,D7
     move.l  #$AA55AA55,D6
     illegal
+XL_CHECKCHAR:
+    move.l  D7,-(A7)
+    move.l  D6,-(A7)
+    move.l  #$F0F0F0F4,D7
+    move.l  #$AA55AA55,D6
+    illegal
+    move.l  (A7)+,D6
+    move.l  (A7)+,D7
+    rts
+XL_RECVCHAR:
+    move.l  D7,-(A7)
+    move.l  D6,-(A7)
+    move.l  #$F0F0F0F5,D7
+    move.l  #$AA55AA55,D6
+    illegal
+    move.l  (A7)+,D6
+    move.l  (A7)+,D7
+    rts
 
 
 ; Initialize device blocks

@@ -4,6 +4,9 @@
 #include <unistd.h>
 #include <thread>
 #include <atomic>
+#include <termios.h>
+#include <sys/select.h>
+#include <fcntl.h>
 
 #include "musashi/m68k.h"
 #include "musashi/m68kcpu.h"
@@ -13,6 +16,40 @@ using namespace std;
 
 #define DUART_IRQ	4
 #define DUART_VEC	0x45
+
+void init_term() {
+	struct termios originalTermios, newTermios;
+
+    tcgetattr(STDIN_FILENO, &originalTermios);
+
+    newTermios = originalTermios;
+    newTermios.c_lflag &= ~(ICANON | ECHO | ICRNL | INLCR);
+
+    tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
+
+	int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
+}
+
+bool check_char() {
+	fd_set readfds;
+	FD_ZERO(&readfds);
+	FD_SET(STDIN_FILENO, &readfds);
+
+	struct timeval timeout;
+	timeout.tv_sec = 0;
+	timeout.tv_usec = 0;
+
+	return select(STDIN_FILENO + 1, &readfds, NULL, NULL, &timeout) > 0;
+}
+
+char read_char() {
+	char c = 0;
+	while (c == 0) {
+		read(STDIN_FILENO, &c, 1);
+	}
+	return c;
+}
 
 extern "C" {
 	rosco::m68k::emu::AddressDecoder* __mem;
@@ -25,11 +62,12 @@ extern "C" {
 		uint32_t d6 = m68k_get_reg(&ctx, M68K_REG_D6);
 		uint32_t a0 = m68k_get_reg(&ctx, M68K_REG_A0);
 
-		if (opcode == 0x4afc && (d7 & 0xFFFFFFF0) == 0xF0F0F0F0 && d6 == 0xAA55AA55) {
+		if ((d7 & 0xFFFFFFF0) == 0xF0F0F0F0 && d6 == 0xAA55AA55) {
 			// It's a trap!
 
 			uint8_t op = d7 & 0x0000000F;
 			uint8_t c;
+			bool r;
 
 			switch (op) {				
 				case 0:
@@ -58,18 +96,35 @@ extern "C" {
 					// printchar
 					c = m68k_read_memory_8(a0++);
 					if (c) {
-					cout << c;
+						cout << c;
 					}
 
 					break;
 				case 3:
 					// prog_exit
 					m68k_pulse_halt();
+					exit(1);
 
-					break;					
+					break;
+				case 4:
+					// check_char
+					r = check_char();
+					m68k_set_reg(M68K_REG_D0, r ? 1 : 0);
+
+					break;
+				case 5:
+					// read_char
+					cout << flush;
+					c = read_char();
+					cout << flush;
+					m68k_set_reg(M68K_REG_D0, c);
+
+					break;
 				default:
-					cerr << "<UNKNOWN TRAP D7=0x" << hex << d7 << "; D6=0x" << d6 << ": IGNORED>" << endl;
+					cerr << "<UNKNOWN OP " << op << "; D7=0x" << hex << d7 << "; D6=0x" << d6 << ": IGNORED>" << endl;
 			}
+		} else {
+			cerr << "<UNKNOWN TRAP op=0x" << opcode << "; D7=0x" << hex << d7 << "; D6=0x" << d6 << ": IGNORED>" << endl;
 		}
 
 		return 1;
@@ -108,6 +163,8 @@ int main(int argc, char** argv) {
 		cout << "Usage: xl86 <binary>" << endl;
 		return 1;
 	} else {
+		init_term();
+
 		std::filesystem::path path = std::filesystem::path(argv[0]).parent_path();
 		path += "/firmware/rosco_m68k.rom";
 
@@ -142,10 +199,10 @@ int main(int argc, char** argv) {
 		cout << "D0          : 0x" << m68k_get_reg(&ctx, M68K_REG_D0) << endl;
 		cout << "D7          : 0x" << m68k_get_reg(&ctx, M68K_REG_D7) << endl << endl;
 #		endif
-
+		
 		std::thread timer_thread(timer_interrupt);
 		int cycles = 0;
-		while (!ctx.stopped) {
+		while (1) { //!ctx.stopped) {
 			cycles += m68k_execute(100000);
 			m68k_get_context(&ctx);
 		}

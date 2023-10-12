@@ -107,7 +107,7 @@ extern "C" {
                 case 3:
                     // prog_exit
                     m68k_pulse_halt();
-                    exit(1);
+                    exit(0);
 
                     break;
                 case 4:

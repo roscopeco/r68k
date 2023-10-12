@@ -170,8 +170,6 @@ extern "C" {
                 default:
                     cerr << "<UNKNOWN OP " << op << "; D7=0x" << hex << d7 << "; D6=0x" << d6 << ": IGNORED>" << endl;
             }
-        } else {
-            cerr << "<UNKNOWN TRAP op=0x" << opcode << "; D7=0x" << hex << d7 << "; D6=0x" << d6 << ": IGNORED>" << endl;
         }
 
         return 1;

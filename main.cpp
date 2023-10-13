@@ -17,8 +17,10 @@ using namespace std;
 #define DUART_IRQ	4
 #define DUART_VEC	0x45
 
+struct termios originalTermios;
+
 void init_term() {
-    struct termios originalTermios, newTermios;
+    struct termios newTermios;
 
     tcgetattr(STDIN_FILENO, &originalTermios);
 
@@ -53,7 +55,7 @@ char read_char() {
 
 extern "C" {
     rosco::m68k::emu::AddressDecoder* __mem;
-    std::ifstream ifs("rosco_sd.bin", std::ios::binary | std::ios::ate);
+    std::fstream ifs("rosco_sd.bin", std::ios::binary | std::ios::ate | std::ios::in | std::ios::out);
 
     int illegal_instruction_handler(int opcode) {
         m68ki_cpu_core ctx;
@@ -107,6 +109,7 @@ extern "C" {
                 case 3:
                     // prog_exit
                     m68k_pulse_halt();
+                    tcsetattr(STDIN_FILENO, TCSANOW, &originalTermios);
                     exit(0);
 
                     break;
@@ -143,6 +146,7 @@ extern "C" {
                     if (ifs && m68k_read_memory_8(a1) > 0) {
                         std::vector<char> buf(512);
 
+                        ifs.clear();
                         ifs.seekg(d1 * 512, std::ios::beg);
                         ifs.read(&buf.front(), 512);
 
@@ -164,8 +168,28 @@ extern "C" {
                     break;
                 case 8:
                     // sd_write
-                    // TODO always just fails for now
-                    m68k_set_reg(M68K_REG_D0, 0);
+                    if (a2 < 0xe00000 && ifs && m68k_read_memory_8(a1) > 0) {
+                        std::vector<char> buf(512);
+
+                        for (int i = 0; i < 512; i++) {
+                            buf[i] = m68k_read_memory_8(a2++);
+                        }
+
+                        ifs.clear();
+                        ifs.seekg(d1 * 512, std::ios::beg);
+                        ifs.write(&buf.front(), 512);
+
+                        if (ifs.gcount() == 512) {
+                            m68k_set_reg(M68K_REG_D0, 1);		    // succeed
+                        } else {
+                            cout << "!!! Bad Write" << endl;
+                            m68k_set_reg(M68K_REG_D0, 0);		// fail
+                        }
+                    } else {						
+                        cout << "!!! Not init or out of bounds" << endl;
+                        m68k_set_reg(M68K_REG_D0, 0);		// fail
+                    }
+
                     break;
                 default:
                     cerr << "<UNKNOWN OP " << op << "; D7=0x" << hex << d7 << "; D6=0x" << d6 << ": IGNORED>" << endl;

@@ -42,7 +42,7 @@ VECTORS:
 
     dcb.l   7,GENERIC_HANDLER           ; 19-1F: Level 1-7 Autovectors
     dcb.l   13,GENERIC_HANDLER          ; 20-2C: TRAP Handlers (unused)
-    dc.l    GENERIC_HANDLER             ; 2D: TRAP#13 handler (replaced later)
+    dc.l    TRAP_13_HANDLER             ; 2D: TRAP#13 handler
     dc.l    TRAP_14_HANDLER             ; 2E: TRAP#14 handler
     dc.l    GENERIC_HANDLER             ; 2F: TRAP#15 handler (replaced later)
     dcb.l   16,GENERIC_HANDLER          ; 30-3F: Remaining Reserved vectors
@@ -156,10 +156,10 @@ INITEFPT:
     move.l  #XL_CHECKCHAR,EFP_CHECKCHAR
 
     ; Block Device IO Routines - SD
-    move.l  #EFP_DUMMY_NEGONE_D0L,EFP_SD_INIT
-    move.l  #EFP_DUMMY_ZERO_D0L,EFP_SD_READ
-    move.l  #EFP_DUMMY_ZERO_D0L,EFP_SD_WRITE
-    move.l  #EFP_DUMMY_ZERO_D0L,EFP_SD_REG
+    move.l  #XL_SD_INIT,EFP_SD_INIT
+    move.l  #XL_SD_READ,EFP_SD_READ
+    move.l  #XL_SD_WRITE,EFP_SD_WRITE
+    move.l  #XL_SD_REGISTER,EFP_SD_REG
 
     ; Block Device IO Routines - SPI
     move.l  #EFP_DUMMY_NEGONE_D0L,EFP_SPI_INIT
@@ -258,6 +258,36 @@ XL_RECVCHAR:
     illegal
     move.l  (A7)+,D6
     move.l  (A7)+,D7
+    rts
+XL_SD_INIT:
+    move.l  D7,-(A7)
+    move.l  D6,-(A7)
+    move.l  #$F0F0F0F6,D7
+    move.l  #$AA55AA55,D6
+    illegal
+    move.l  (A7)+,D6
+    move.l  (A7)+,D7
+    rts
+XL_SD_READ:
+    move.l  D7,-(A7)
+    move.l  D6,-(A7)
+    move.l  #$F0F0F0F7,D7
+    move.l  #$AA55AA55,D6
+    illegal
+    move.l  (A7)+,D6
+    move.l  (A7)+,D7
+    rts
+XL_SD_WRITE:
+    move.l  D7,-(A7)
+    move.l  D6,-(A7)
+    move.l  #$F0F0F0F8,D7
+    move.l  #$AA55AA55,D6
+    illegal
+    move.l  (A7)+,D6
+    move.l  (A7)+,D7
+    rts
+XL_SD_REGISTER:
+    clr.l   d0
     rts
 
 

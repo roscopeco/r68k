@@ -64,6 +64,7 @@ extern "C" {
         uint32_t d7 = m68k_get_reg(&ctx, M68K_REG_D7);
         uint32_t d6 = m68k_get_reg(&ctx, M68K_REG_D6);
         uint32_t d1 = m68k_get_reg(&ctx, M68K_REG_D1);
+        uint32_t d0 = m68k_get_reg(&ctx, M68K_REG_D1);
         uint32_t a0 = m68k_get_reg(&ctx, M68K_REG_A0);
         uint32_t a1 = m68k_get_reg(&ctx, M68K_REG_A1);
         uint32_t a2 = m68k_get_reg(&ctx, M68K_REG_A2);
@@ -100,7 +101,7 @@ extern "C" {
                     break;
                 case 2:
                     // printchar
-                    c = m68k_read_memory_8(a0++);
+                    c = (d0 & 0xFF);
                     if (c) {
                         cout << c;
                     }

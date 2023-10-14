@@ -27,7 +27,7 @@ void init_term() {
     newTermios = originalTermios;
     newTermios.c_lflag &= ~(ICANON | ECHO);
     newTermios.c_iflag &= ~(ICRNL | INLCR);
-    
+
     tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
 
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
@@ -65,7 +65,7 @@ extern "C" {
         uint32_t d7 = m68k_get_reg(&ctx, M68K_REG_D7);
         uint32_t d6 = m68k_get_reg(&ctx, M68K_REG_D6);
         uint32_t d1 = m68k_get_reg(&ctx, M68K_REG_D1);
-        uint32_t d0 = m68k_get_reg(&ctx, M68K_REG_D1);
+        uint32_t d0 = m68k_get_reg(&ctx, M68K_REG_D0);
         uint32_t a0 = m68k_get_reg(&ctx, M68K_REG_A0);
         uint32_t a1 = m68k_get_reg(&ctx, M68K_REG_A1);
         uint32_t a2 = m68k_get_reg(&ctx, M68K_REG_A2);

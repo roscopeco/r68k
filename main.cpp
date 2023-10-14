@@ -25,8 +25,9 @@ void init_term() {
     tcgetattr(STDIN_FILENO, &originalTermios);
 
     newTermios = originalTermios;
-    newTermios.c_lflag &= ~(ICANON | ECHO | ICRNL | INLCR);
-
+    newTermios.c_lflag &= ~(ICANON | ECHO);
+    newTermios.c_iflag &= ~(ICRNL | INLCR);
+    
     tcsetattr(STDIN_FILENO, TCSANOW, &newTermios);
 
     int flags = fcntl(STDIN_FILENO, F_GETFL, 0);

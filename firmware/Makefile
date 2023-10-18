@@ -34,7 +34,7 @@ DISASM=$(BINARY_BASENAME).dis
 SYM=$(BINARY_BASENAME).sym
 MAP=$(BINARY_BASENAME).map
 
-OBJECTS=bootstrap.o cputype.o trap13.o trap14.o
+OBJECTS=bootstrap.o cputype.o trap13.o trap14.o trap15.o
 
 .PHONY: all clean
 

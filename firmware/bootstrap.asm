@@ -44,7 +44,7 @@ VECTORS:
     dcb.l   13,GENERIC_HANDLER          ; 20-2C: TRAP Handlers (unused)
     dc.l    TRAP_13_HANDLER             ; 2D: TRAP#13 handler
     dc.l    TRAP_14_HANDLER             ; 2E: TRAP#14 handler
-    dc.l    GENERIC_HANDLER             ; 2F: TRAP#15 handler (replaced later)
+    dc.l    EASY68K_TRAP_15_HANDLER     ; 2F: TRAP#15 handler
     dcb.l   16,GENERIC_HANDLER          ; 30-3F: Remaining Reserved vectors
     dcb.l   4,GENERIC_HANDLER           ; 40-43: MFP GPIO #0-3 (Not used)
     dc.l    GENERIC_HANDLER             ; 44: MFP Timer D (Interrupt not used)
@@ -86,6 +86,17 @@ START::
     bsr.w   INITEFPT                    ; Initialise Extension Function Pointer Table
     bsr.w   INITDEVS                    ; Initialise device blocks
     bsr.w   INITMEMCOUNT                ; Initialise memory count in SDB
+
+    ; set up easy68k constants
+    ; Make sure these are consistent with main.cpp
+ECHO_ON             equ     $410
+PROMPT_ON           equ     $411
+LF_DISPLAY          equ     $412
+
+    move.b  #1,ECHO_ON
+    move.b  #1,PROMPT_ON
+    move.b  #1,LF_DISPLAY
+    ; end of easy68k setup
 
     ifnd NO_BANNER
     ifnd LATE_BANNER 

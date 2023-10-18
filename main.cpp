@@ -332,7 +332,7 @@ extern "C" {
                     cout << flush;
                     c = read_char();
                     cout << flush;
-                    m68k_set_reg(M68K_REG_D0, c);
+                    m68k_set_reg(M68K_REG_D1, c);
 
                     break;
                 case 0xD6:
@@ -343,7 +343,7 @@ extern "C" {
                 case 0xD7:
                     // CHECKINPUT
                     r = check_char();
-                    m68k_set_reg(M68K_REG_D0, r ? 1 : 0);
+                    m68k_set_reg(M68K_REG_D1, r ? 1 : 0);
 
                     break;
                 case 0xD8:

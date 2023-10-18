@@ -337,8 +337,8 @@ extern "C" {
                     break;
                 case 0xD6:
                     // SENDCHAR
-                    cout << "easy68k SENDCHAR 0xD6 not implemneted" << endl;
-
+                    cout << (char) (d1 & 0xFF);
+                    
                     break;
                 case 0xD7:
                     // CHECKINPUT

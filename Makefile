@@ -1,7 +1,7 @@
 # Make r68k 
 # (c) 2023 Ross Bamford & Contribs
 
-CLEAN_FILES=r68k *.o
+CLEAN_FILES=r68k *.o rosco_m68k_glue/*.o machine/*.o
 R68K_OBJS=machine/AddressDecoder.o machine/Memory.o rosco_m68k_glue/cpuglue.o rosco_m68k_glue/memoryglue.o main.o
 MUSASHI_OBJS=musashi/m68kcpu.o musashi/m68kdasm.o musashi/m68kops.o musashi/softfloat/softfloat.o
 ROM_BINARY=firmware/rosco_m68k.rom

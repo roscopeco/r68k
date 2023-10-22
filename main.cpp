@@ -110,6 +110,7 @@ extern "C" {
         uint32_t a0 = m68k_get_reg(&ctx, M68K_REG_A0);
         uint32_t a1 = m68k_get_reg(&ctx, M68K_REG_A1);
         uint32_t a2 = m68k_get_reg(&ctx, M68K_REG_A2);
+        uint32_t a7 = m68k_get_reg(&ctx, M68K_REG_A7);
 
         if ((d7 & 0xFFFFFF00) == 0xF0F0F000 && d6 == 0xAA55AA55) {
             // It's a trap!
@@ -162,8 +163,7 @@ extern "C" {
                     // prog_exit
                     m68k_pulse_halt();
                     tcsetattr(STDIN_FILENO, TCSANOW, &originalTermios);
-                    exit(0);
-
+                    exit(m68k_read_memory_32(a7 + 4));       // assuming called from cstdlib - C will have stacked an exit code
                     break;
                 case 4:
                     // check_char

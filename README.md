@@ -7,16 +7,20 @@ Run native rosco_m68k binaries on your modern computer.
 > to run many general purpose programs, and is great for testing /
 > iterating on a thing without having to upload to a real machine. 
 
+> **Also note**: This code is horrific by literally any standard 
+> you might care to mention. It grew out of a hack, and happened to 
+> become useful. 
+>
+> We only use it for dev and in our build for running tests, so sorry,
+> not sorry.
+
 ## Build it
 
-You'll need the rosco_m68k toolchain installed, as well as build tools
-for your platform.
+You'll need the rosco_m68k toolchain (or other m68k toolchain of
+your choosing) installed, as well as build tools for your platform.
 
-You'll also need to have the rosco_m68k codebase checked out somewhere, 
-with the standard libs build and installed.
-
-```shell
-ROSCO_M68K_DIR=/path/to/your/rosco_m68k make clean all
+```
+make clean all
 ```
 
 ## Run it

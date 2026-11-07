@@ -167,7 +167,6 @@ M68KMAKE_TABLE_FOOTER
 void m68ki_build_opcode_table(void)
 {
 	const opcode_handler_struct *ostruct;
-	int cycle_cost;
 	int instr;
 	int i;
 	int j;
@@ -215,17 +214,10 @@ void m68ki_build_opcode_table(void)
 				m68ki_instruction_jump_table[instr] = ostruct->opcode_handler;
 				for(k=0;k<NUM_CPU_TYPES;k++)
 					m68ki_cycles[k][instr] = ostruct->cycles[k];
-				// For all shift operations with known shift distance (encoded in instruction word)
-				if((instr & 0xf000) == 0xe000 && (!(instr & 0x20)))
-				{
-					// On the 68000 and 68010 shift distance affect execution time.
-					// Add the cycle cost of shifting; 2 times the shift distance
-					cycle_cost = ((((i-1)&7)+1)<<1);
-					m68ki_cycles[0][instr] += cycle_cost;
-					m68ki_cycles[1][instr] += cycle_cost;
-					// On the 68020 shift distance does not affect execution time
-					m68ki_cycles[2][instr] += 0;
-				}
+				/* r68k: no shift-distance cost here for the shifts by an
+				 * immediate count: their handlers already charge
+				 * shift<<CYC_SHIFT (2 per bit on the 68000/68010, none
+				 * on the 68020+), so it was counted twice. */
 			}
 		}
 		ostruct++;

@@ -222,6 +222,19 @@ if [ "$rc" = 0 ] && grep -q "^# run 1 cycles" prof.txt 2> /dev/null && grep -q "
 else
     fail "R68K_PROF profile" "rc $rc, $(cat prof.txt 2> /dev/null | head -3)"
 fi
+# Shift timing (68010: 6+2n byte/word, 8+2n long), from the profile:
+# start / moveq #8,d1 / lsl.w #8,d0 / lsr.w #1,d0 / lsl.l #8,d0 /
+# rol.b #3,d0 / lsl.l d1,d0 / stop / exit
+bin shifts.bin "13fc 0001 00ff fff0 7208 e148 e248 e188 e718 e3a8 13fc 0002 00ff fff0 $EXIT"
+rm -f shifts.txt
+R68K_PROF=shifts.txt run 5 shifts.bin < /dev/null
+got=$(awk '$1 ~ /^04001[02]$|^04000[ACE]$/ { printf "%s=%s ", $1, $2 }' shifts.txt 2> /dev/null)
+if [ "$got" = "04000A=22 04000C=8 04000E=24 040010=12 040012=24 " ]; then
+    ok "shift cycles (immediate and register count)"
+else
+    fail "shift cycles (immediate and register count)" "got: $got"
+fi
+
 run 5 -d prof.bin < /dev/null
 expect "-d without R68K_PROF: 0xFFFFF0 is a bus error" $((128 + $(kill -l BUS))) "" "bus error at 00FFFFF0"
 

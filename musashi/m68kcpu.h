@@ -2045,8 +2045,23 @@ static inline void m68ki_exception_address_error(void)
 	}
 	CPU_RUN_MODE = RUN_MODE_BERR_AERR_RESET_WSF;
 
-	/* Note: This is implemented for 68000 only! */
-	m68ki_stack_frame_buserr(sr);
+	r68k_address_error(m68ki_aerr_address, m68ki_aerr_write_mode == MODE_WRITE, REG_PPC);
+
+	if(CPU_TYPE_IS_010(CPU_TYPE))
+	{
+		/* r68k: the 68010 stacks a format 8 frame, as for a bus error,
+		 * with the instruction's register effects undone */
+		int i;
+		for (i = 15; i >= 0; i--){
+			REG_DA[i] = REG_DA_SAVE[i];
+		}
+		m68ki_stack_frame_1000(REG_PPC, sr, EXCEPTION_ADDRESS_ERROR);
+	}
+	else
+	{
+		/* Note: This is implemented for 68000 only! */
+		m68ki_stack_frame_buserr(sr);
+	}
 
 	m68ki_jump_vector(EXCEPTION_ADDRESS_ERROR);
 

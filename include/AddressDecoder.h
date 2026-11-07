@@ -9,6 +9,7 @@
 #include <fstream>
 #include <memory>
 #include "Memory.h"
+#include "Duart.h"
 
 namespace rosco {
     namespace m68k {
@@ -18,6 +19,10 @@ namespace rosco {
                 explicit AddressDecoder(std::uint32_t romsize, std::uint32_t ramsize, char const* filename);
 
                 Memory* getMemoryForAddress(std::uint32_t address);
+
+                // Is there anything at address .. address + size - 1 (RAM,
+                // ROM or the DUART)? If not, the hardware would give /BERR.
+                bool isMapped(std::uint32_t address, std::uint32_t size);
                 std::uint32_t makeRelativeAddress(std::uint32_t address);
 
                 void reset();
@@ -32,12 +37,21 @@ namespace rosco {
 
                 void LoadMemoryFile(const uint32_t baseAddr, char const* filename);
 
+                void setDuart(Duart* d) { this->duart = d; }
+
+                // The board's flash write enable (off by default): when
+                // off, writes to the ROM are ignored
+                void setRomWritable(bool w) { this->romWritable = w; }
+
             private:
                 std::unique_ptr<Memory> rom;
                 std::unique_ptr<Memory> ram;
                 bool bootLineActive;
                 uint32_t bootReadCount;
+                Duart* duart = nullptr;
+                bool romWritable = false;
 
+                Memory* getWritableMemoryForAddress(std::uint32_t address);
                 void ReadRomData(char const* filename);
             };
         }

@@ -48,6 +48,9 @@ include debug_stub/include.mk
 %.o : %.asm
 	$(AS) $(ASFLAGS) -o $@ $<
 
+# Pulled in with "include" by most of the sources
+$(OBJECTS) : rosco_m68k_public.asm rosco_m68k_private.asm
+
 $(ELF) : $(OBJECTS) $(STAGE2)
 	$(LD) $(LDFLAGS) $^ -o $@
 	$(NM) --numeric-sort $@ >$(SYM)

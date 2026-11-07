@@ -4,6 +4,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <stdexcept>
+#include <string>
 #include "Memory.h"
 
 namespace rosco {
@@ -11,11 +13,11 @@ namespace rosco {
         namespace emu {
             Memory::Memory(const uint32_t size) {
                 this->size = size;
-                this->store = new uint8_t[size];
+                this->store = new uint8_t[size]();
             }
 
             Memory::~Memory() {
-                delete(this->store);
+                delete[] this->store;
             }
 
             uint32_t Memory::read32(const uint32_t address) {
@@ -24,10 +26,13 @@ namespace rosco {
                 std::cout << "read32 : " << std::hex << addr << "; Base: " << (uint32_t*)this->store << "; relative: " << address << std::endl;
 #endif
 
-                if (address < this->size) {
-                    return bswap_32(*((uint32_t*)(this->store + address)));
+                // Big-endian; the halves of an access that straddles the end
+                // are read as such (0xFF past the end, like read8)
+                if (address < this->size && this->size - address >= 4) {
+                    const uint8_t *p = this->store + address;
+                    return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3];
                 } else {
-                    return 0xFFFFFFFF;
+                    return (uint32_t)read16(address) << 16 | read16(address + 2);
                 }
             }
 
@@ -37,10 +42,11 @@ namespace rosco {
                 std::cout << "read16 : " << std::hex << addr << "; Base: " << (uint32_t*)this->store << "; relative: " << address << std::endl;
 #endif
 
-                if (address < this->size) {
-                    return bswap_16(*((uint16_t*)(this->store + address)));
+                if (address < this->size && this->size - address >= 2) {
+                    const uint8_t *p = this->store + address;
+                    return (uint16_t)(p[0] << 8 | p[1]);
                 } else {
-                    return 0xFFFF;
+                    return (uint16_t)(read8(address) << 8 | read8(address + 1));
                 }
             }
 
@@ -63,9 +69,8 @@ namespace rosco {
                 std::cout << "write32: " << std::hex << addr << "; Base: " << (uint32_t*)this->store << "; relative: " << address << std::endl;
 #endif
 
-                if (address < this->size) {
-                    *((uint32_t*)(this->store + address)) = bswap_32(data);
-                }
+                write16(address, data >> 16);
+                write16(address + 2, data & 0xFFFF);
             }
 
             void Memory::write16(const uint32_t address, uint16_t data) {
@@ -74,9 +79,8 @@ namespace rosco {
                 std::cout << "write16: " << std::hex << addr << "; Base: " << (uint32_t*)this->store << "; relative: " << address << std::endl;
 #endif
 
-                if (address < this->size) {
-                    *((uint16_t*)(this->store + address)) = bswap_16(data);
-                }
+                write8(address, data >> 8);
+                write8(address + 1, data & 0xFF);
             }
 
             void Memory::write8(const uint32_t address, uint8_t data) {
@@ -94,13 +98,13 @@ namespace rosco {
                 std::ifstream ifs(filename, std::ios::binary | std::ios::ate);
 
                 if (!ifs) {
-                    throw std::runtime_error("Failed to open ROM");
+                    throw std::runtime_error(std::string("cannot open ") + filename);
                 }
 
                 std::ifstream::pos_type pos = ifs.tellg();
 
-                if (pos > this->size) {
-                    throw std::exception();
+                if (baseAddr > this->size || pos > this->size - baseAddr) {
+                    throw std::runtime_error(std::string(filename) + " does not fit in memory");
                 } else {
                     ifs.seekg(0, std::ios::beg);
                     ifs.read((char*)&this->store[baseAddr], pos);

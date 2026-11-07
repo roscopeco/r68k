@@ -335,8 +335,10 @@ INITMEMCOUNT:
     move.l  #BERR_HANDLER,$8            ; Install temporary bus error handler
     move.l  #.BLOCKSIZE,A0
 .LOOP
-    move.l  #.TESTVALUE,(A0)
+    move.l  (A0),-(A7)                  ; r68k loads the program before this
+    move.l  #.TESTVALUE,(A0)            ; runs: keep what is there...
     move.l  (A0),D0
+    move.l  (A7)+,(A0)                  ; ... and put it back
 
     tst.b   BERR_FLAG                   ; Was there a bus error?
     bne.s   .DONE                       ; Fail fast if so...

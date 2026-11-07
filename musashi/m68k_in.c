@@ -167,7 +167,6 @@ M68KMAKE_TABLE_FOOTER
 void m68ki_build_opcode_table(void)
 {
 	const opcode_handler_struct *ostruct;
-	int cycle_cost;
 	int instr;
 	int i;
 	int j;
@@ -215,17 +214,10 @@ void m68ki_build_opcode_table(void)
 				m68ki_instruction_jump_table[instr] = ostruct->opcode_handler;
 				for(k=0;k<NUM_CPU_TYPES;k++)
 					m68ki_cycles[k][instr] = ostruct->cycles[k];
-				// For all shift operations with known shift distance (encoded in instruction word)
-				if((instr & 0xf000) == 0xe000 && (!(instr & 0x20)))
-				{
-					// On the 68000 and 68010 shift distance affect execution time.
-					// Add the cycle cost of shifting; 2 times the shift distance
-					cycle_cost = ((((i-1)&7)+1)<<1);
-					m68ki_cycles[0][instr] += cycle_cost;
-					m68ki_cycles[1][instr] += cycle_cost;
-					// On the 68020 shift distance does not affect execution time
-					m68ki_cycles[2][instr] += 0;
-				}
+				/* r68k: no shift-distance cost here for the shifts by an
+				 * immediate count: their handlers already charge
+				 * shift<<CYC_SHIFT (2 per bit on the 68000/68010, none
+				 * on the 68020+), so it was counted twice. */
 			}
 		}
 		ostruct++;
@@ -9237,8 +9229,18 @@ M68KMAKE_OP(rte, 32, ., .)
 				return;
 			} else if (format_word == 8) {
 				/* Format 8 stack frame -- 68010 only. 29 word bus/address error */
+				/* The handler set RR in the special status word: it has
+				 * done the faulted cycle itself, the 010 continues after
+				 * it. The frame's PC is the faulting instruction (its
+				 * register effects are undone), so skip that instead. */
+				uint rerun_done = m68ki_read_16(REG_A[7]+8) & 0x8000;
 				new_sr = m68ki_pull_16();
 				new_pc = m68ki_pull_32();
+				if(rerun_done)
+				{
+					char dasm[256];
+					new_pc += m68k_disassemble(dasm, new_pc, M68K_CPU_TYPE_68010);
+				}
 				m68ki_fake_pull_16();	/* format word */
 				m68ki_fake_pull_16();	/* special status word */
 				m68ki_fake_pull_32();	/* fault address */

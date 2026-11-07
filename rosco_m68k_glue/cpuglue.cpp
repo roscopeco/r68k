@@ -12,6 +12,12 @@ extern "C" {
 
 extern rosco::m68k::emu::AddressDecoder *__mem;
 
+/* Is the CPU writing a bus/address error stack frame? (A bus error now
+ * is a double fault.) Here, as m68kcpu.h cannot go with memoryglue.cpp. */
+bool r68k_stacking_bus_error() {
+    return CPU_RUN_MODE == RUN_MODE_BERR_AERR_RESET_WSF;
+}
+
 void resetMachineHandler() {
     __mem->reset();
 }

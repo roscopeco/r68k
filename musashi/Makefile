@@ -14,7 +14,7 @@ EXEPATH = ./
 
 CC        = gcc
 WARNINGS  = -Wall -Wextra -pedantic
-CFLAGS    = $(WARNINGS)
+CFLAGS    = -O2 $(WARNINGS)
 LFLAGS    = $(WARNINGS)
 
 DELETEFILES = $(MUSASHIGENCFILES) $(MUSASHIGENHFILES) $(.OFILES) $(TARGET) $(MUSASHIGENERATOR)$(EXE)
@@ -27,7 +27,13 @@ clean:
 
 m68kcpu.o: $(MUSASHIGENHFILES) m68kfpu.c m68kmmu.h softfloat/softfloat.c softfloat/softfloat.h
 
-$(MUSASHIGENCFILES) $(MUSASHIGENHFILES): $(MUSASHIGENERATOR)$(EXE)
+# Everything sees the configuration (m68kconf.h) through m68k.h
+$(.OFILES): m68k.h m68kconf.h
+m68kcpu.o m68kops.o softfloat/softfloat.o: m68kcpu.h softfloat/milieu.h softfloat/softfloat.h
+m68kops.o: $(MUSASHIGENHFILES)
+softfloat/softfloat.o: softfloat/softfloat-macros softfloat/softfloat-specialize
+
+$(MUSASHIGENCFILES) $(MUSASHIGENHFILES): $(MUSASHIGENERATOR)$(EXE) m68k_in.c
 	$(EXEPATH)$(MUSASHIGENERATOR)$(EXE)
 
 $(MUSASHIGENERATOR)$(EXE):  $(MUSASHIGENERATOR).c

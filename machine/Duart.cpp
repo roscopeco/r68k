@@ -3,9 +3,66 @@
 //
 
 #include <iostream>
+#include "Duart.h"
+// The web page (Emscripten) and the hosted builds (R68K_HOSTED: the
+// Windows program of src68k/host) give channel A to their own console.
+#if defined(__EMSCRIPTEN__) || defined(R68K_HOSTED)
+#define R68K_PAGE_IO 1
+#include <string>
+#endif
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#elif defined(R68K_PAGE_IO)
+#define EMSCRIPTEN_KEEPALIVE
+extern "C" void r68k_host_output(const char *data, size_t n);
+#else
 #include <sys/select.h>
 #include <unistd.h>
-#include "Duart.h"
+#endif
+
+#ifdef R68K_PAGE_IO
+// In a web page (src68k/web in bbc-basic-68k, with webmain.cpp in place of
+// main()), or a hosted build (src68k/host, hostmain.cpp): channel A is the
+// page's terminal, or the program's console.
+// * Keys come in through r68k_key() (r68k_pending() of them are waiting,
+//   r68k_drop() drops them) and go to the receiver at most one per KEY_TIME
+//   of real time.  Minix takes input from the line's buffer (256 bytes) on
+//   clock ticks, and the clock runs in real time, however fast the CPU
+//   runs: pacing by CPU cycles would overrun the buffer with pasted text.
+// * Output is collected until r68k_flush() hands it to
+//   Module.r68kOutput(bytes) (hosted: r68k_host_output()).
+// * Timer interrupts missed while the page was busy (the main loop runs in
+//   frames) are made up, up to MAX_TICKS, so the Minix clock keeps time.
+// * r68k_duart_idle: nothing pending (no key, no interrupt), and
+//   r68k_duart_wait: milliseconds to the next timer interrupt, for the main
+//   loop's idle test.
+static constexpr int MAX_TICKS = 10;
+static constexpr std::chrono::microseconds KEY_TIME(1000);
+static std::deque<std::uint8_t> webKeys;
+static std::string webOut;
+static int missedTicks;
+static std::chrono::steady_clock::time_point nextKey;
+
+extern "C" {
+    bool r68k_duart_idle;
+    double r68k_duart_wait;
+
+    EMSCRIPTEN_KEEPALIVE void r68k_key(int c) { webKeys.push_back((std::uint8_t)c); }
+    EMSCRIPTEN_KEEPALIVE int r68k_pending() { return (int)webKeys.size(); }
+    EMSCRIPTEN_KEEPALIVE void r68k_drop() { webKeys.clear(); }
+
+    void r68k_flush() {
+        if (webOut.empty()) return;
+#ifdef __EMSCRIPTEN__
+        EM_ASM({ if (Module.r68kOutput) Module.r68kOutput(HEAPU8.slice($0, $0 + $1)); },
+               webOut.data(), webOut.size());
+#else
+        r68k_host_output(webOut.data(), webOut.size());
+#endif
+        webOut.clear();
+    }
+}
+#endif
 
 namespace rosco {
     namespace m68k {
@@ -92,7 +149,11 @@ namespace rosco {
                 switch ((address - BASE) >> 1) {
                 case MRA:       mrA[mrPtrA] = data; mrPtrA = 1; break;
                 case MISR_CRA:  if ((data & 0x70) == 0x10) mrPtrA = 0; break;
+#ifdef R68K_PAGE_IO
+                case RHRA_THRA: webOut.push_back((char)data); break;
+#else
                 case RHRA_THRA: std::cout.put((char)data); std::cout.flush(); break;
+#endif
                 case IPCR_ACR:  acr = data; break;
                 case ISR_IMR:   imr = data; break;
                 case CTU_CTUR:  preset = (preset & 0x00FF) | (data << 8); break;
@@ -107,6 +168,32 @@ namespace rosco {
             }
 
             void Duart::poll() {
+#ifdef R68K_PAGE_IO
+                if (counterRunning) {
+                    auto now = std::chrono::steady_clock::now();
+                    while (now >= nextExpiry && missedTicks < MAX_TICKS) {
+                        missedTicks++;
+                        nextExpiry += period();
+                    }
+                    if (now >= nextExpiry) nextExpiry = now + period();
+                    if (!counterReady && missedTicks > 0) {
+                        counterReady = true;
+                        missedTicks--;
+                    }
+                }
+                if (rxA.empty() && !webKeys.empty()
+                        && std::chrono::steady_clock::now() >= nextKey) {
+                    nextKey = std::chrono::steady_clock::now() + KEY_TIME;
+                    rxA.push_back(webKeys.front());
+                    webKeys.pop_front();
+                }
+                r68k_duart_idle = !counterReady && missedTicks == 0
+                    && rxA.empty() && webKeys.empty();
+                r68k_duart_wait = !counterRunning ? 10 :
+                    std::chrono::duration<double, std::milli>(
+                        nextExpiry - std::chrono::steady_clock::now()).count();
+                update();
+#else
                 if (counterRunning) {
                     auto now = std::chrono::steady_clock::now();
                     if (now >= nextExpiry) {
@@ -127,6 +214,7 @@ namespace rosco {
                     }
                 }
                 update();
+#endif
             }
         }
     }

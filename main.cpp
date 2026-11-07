@@ -607,7 +607,61 @@ extern "C" {
     int r68k_trace_on = 0;
 }
 
+// ---- profiling: only with R68K_PROF=<file> set ----
+// The program writes 1 to the byte at 0xFFFFF0 to start, 2 to stop: the
+// cycles spent at each instruction address (in RAM) and the totals are
+// appended to the file $R68K_PROF. Without R68K_PROF that address is not
+// special (memoryglue.cpp).
+extern "C" {
+    bool r68k_prof_enabled = false;
+}
+static unsigned long long prof_acc;             // cycles of finished slices
+static bool prof_on;
+static unsigned long long prof_t0, prof_last, prof_ninsn;
+static unsigned int prof_lastpc;
+static std::vector<unsigned long long> prof_cyc, prof_cnt;
+static int prof_run;
+
+static unsigned long long prof_now() {
+    return prof_acc + (unsigned) m68k_cycles_run();
+}
+
+extern "C" void r68k_prof_ctl(unsigned int v) {
+    if (v == 1) {
+        prof_cyc.assign(ram_size / 2, 0);
+        prof_cnt.assign(ram_size / 2, 0);
+        prof_ninsn = 0;
+        prof_t0 = prof_last = prof_now();
+        prof_lastpc = 0xFFFFFFFF;
+        prof_on = true;
+    } else if (v == 2 && prof_on) {
+        unsigned long long t = prof_now();
+        if (prof_lastpc < ram_size)
+            prof_cyc[prof_lastpc / 2] += t - prof_last;
+        prof_on = false;
+        const char *f = getenv("R68K_PROF");
+        FILE *o = fopen(f != NULL && *f != 0 ? f : "r68k.prof", "a");
+        if (!o) return;
+        fprintf(o, "# run %d cycles %llu instructions %llu\n", ++prof_run,
+                t - prof_t0, prof_ninsn);
+        for (unsigned i = 0; i < prof_cyc.size(); i++)
+            if (prof_cnt[i])
+                fprintf(o, "%06X %llu %llu\n", i * 2, prof_cyc[i], prof_cnt[i]);
+        fclose(o);
+    }
+}
+
 extern "C" void r68k_trace_pc(unsigned int pc) {
+    if (prof_on) {
+        unsigned long long t = prof_now();
+        if (prof_lastpc < ram_size)
+            prof_cyc[prof_lastpc / 2] += t - prof_last;
+        prof_last = t;
+        prof_lastpc = pc;
+        prof_ninsn++;
+        if (pc < ram_size)
+            prof_cnt[pc / 2]++;
+    }
     // Only with R68K_TRACE set: keep a PC trace (shown by the SIGUSR1
     // dump), stop it when the PC runs wild.  R68K_DUMPAT=<hex pc>: dump
     // CPU and RAM the first time pc is reached.
@@ -785,7 +839,9 @@ int main(int argc, char** argv) {
             __mem->setDuart(__duart);
         }
 
-        r68k_trace_on = getenv("R68K_TRACE") != NULL || getenv("R68K_DUMPAT") != NULL;
+        r68k_prof_enabled = getenv("R68K_PROF") != NULL;
+        r68k_trace_on = getenv("R68K_TRACE") != NULL || getenv("R68K_DUMPAT") != NULL
+                       || r68k_prof_enabled;
 
         m68k_set_cpu_type(M68K_CPU_TYPE_68010);
         m68k_init();
@@ -795,7 +851,7 @@ int main(int argc, char** argv) {
             r68k_bus_errors = true;     // after the reset: it reads outside m68k_execute
 
             while (1) {
-                m68k_execute(10000);
+                prof_acc += m68k_execute(10000);
                 if (CPU_STOPPED & STOP_LEVEL_HALT) {
                     fprintf(stderr, "\n[r68k] CPU halted, exiting\n");
                     exit(1);
@@ -810,7 +866,7 @@ int main(int argc, char** argv) {
         const auto tick = std::chrono::milliseconds(10);
         auto nextTick = std::chrono::steady_clock::now() + tick;
         while (1) {
-            m68k_execute(100000);
+            prof_acc += m68k_execute(100000);
 
             auto now = std::chrono::steady_clock::now();
             if (now >= nextTick) {

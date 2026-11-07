@@ -148,7 +148,14 @@ static void watch(unsigned int address, unsigned int size, unsigned int value) {
 }
 
 /* Write to anywhere */
+void r68k_prof_ctl(unsigned int v);   /* main.cpp */
+extern bool r68k_prof_enabled;
+
 void m68k_write_memory_8(unsigned int address, unsigned int value) {
+    if (r68k_prof_enabled && address == 0xFFFFF0) {     /* profiling control, R68K_PROF */
+        r68k_prof_ctl(value & 0xFF);
+        return;
+    }
     check_bus(address, 1);
     watch(address, 1, value);
     __mem->write8(address, static_cast<uint8_t>(value & 0xFF));

@@ -213,6 +213,18 @@ expect "-r without a file" 1 "" "-r needs a ROM file"
 run 5 -h < /dev/null
 expect "-h" 0 "^Usage: r68k"
 
+# R68K_PROF: move.b #1,$FFFFF0 / moveq #100,d0 / 1: subq.l #1,d0 / bne 1b /
+# move.b #2,$FFFFF0 / exit: the loop's subq at 0x4000A ran 100 times
+bin prof.bin "13fc 0001 00ff fff0 7064 5380 66fc 13fc 0002 00ff fff0 $EXIT"
+R68K_PROF=prof.txt run 5 prof.bin < /dev/null
+if [ "$rc" = 0 ] && grep -q "^# run 1 cycles" prof.txt 2> /dev/null && grep -q "^04000A [0-9]* 100$" prof.txt; then
+    ok "R68K_PROF profile"
+else
+    fail "R68K_PROF profile" "rc $rc, $(cat prof.txt 2> /dev/null | head -3)"
+fi
+run 5 -d prof.bin < /dev/null
+expect "-d without R68K_PROF: 0xFFFFF0 is a bus error" $((128 + $(kill -l BUS))) "" "bus error at 00FFFFF0"
+
 run 5 missing.bin < /dev/null
 expect "missing program" 1 "" "cannot open missing.bin"
 

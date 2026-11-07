@@ -93,6 +93,16 @@ exists.
 | `R68K_TRACE=1`             | Keeps the last 4096 PCs for that dump. It stops at the first odd PC, a PC outside RAM and ROM, or two zero opcodes in a row, so the trace shows how it got there. |
 | `R68K_DUMPAT=<hex pc>`     | The same dump, the first time the PC gets there. |
 | `R68K_WATCH=lo-hi[,plo-phi]` | Reports the first 8 writes into `[lo, hi)` (hex), with the PC and code of the first writer. Writes by code in `[plo, phi)` are left out. |
+| `R68K_PROF=<file>`        | Cycle profiler: the program writes the byte 1 to `0xFFFFF0` to start and 2 to stop. Appends the cycles and instruction counts per address in RAM to the file. Without it, `0xFFFFF0` is not special. |
+
+### Embedding
+
+`machine/Duart.cpp` has a second console path for programs that embed
+r68k with their own `main()`, a web page (`__EMSCRIPTEN__`) or a hosted
+console program (`-DR68K_HOSTED`, which provides
+`r68k_host_output()`): channel A output is collected for `r68k_flush()`,
+keys come in through `r68k_key()`, and missed timer ticks are made up.
+See `src68k/web` and `src68k/host` in bbc-basic-68k.
 
 ## That's it
 

@@ -36,6 +36,13 @@ namespace rosco {
                 // Called regularly from the main loop: timer and input.
                 void poll();
 
+                // r68k's own firmware (console calls check_char/read_char)
+                // reads stdin too: it takes a key this receiver already
+                // holds first, so that the keys keep their order and none
+                // is left behind in a receiver nobody reads.
+                bool rxHeld() const { return !rxA.empty(); }
+                std::uint8_t rxTake();
+
                 std::uint8_t vector() const { return ivr; }
 
             private:

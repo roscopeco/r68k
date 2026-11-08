@@ -145,6 +145,14 @@ expect "read_char" 120
 run 5 readchar.bin < /dev/null
 expect "read_char at end of input" 0 "" "end of input"
 
+# -d: the firmware's read_char and the DUART model both read stdin; a key
+# the DUART took must not be lost. 1: read_char / cmp.b #'Q',d0 / beq 2f /
+# printchar / move.l #20000,d1 / 3: subq.l #1,d1 / bne 3b (work between
+# keys, so the DUART polls while keys wait) / bra 1b / 2: exit
+bin echo.bin "$(trap_ f5) 0c00 0051 6700 001e $(trap_ f2) 223c 0000 4e20 5381 66fc 6000 ffd0 $EXIT"
+rc=0; (sleep 0.5; printf 'ABCDEFGHIJQ') | timeout 5 "$r68k" -d echo.bin > out 2> err || rc=$?
+expect "-d: read_char loses no key to the DUART" 0 "^ABCDEFGHIJ$"
+
 # move.w #$2000,sr / move.l #40000000,d0 / 1: subq.l #1,d0 / bne 1b /
 # GETUPTICKS / move.l d1,-(a7) x2 / exit: some 100Hz ticks have passed
 bin ticks.bin "46fc 2000 203c 0262 5a00 5380 66fc $(trap_ d8) 2f01 2f01 $EXIT"

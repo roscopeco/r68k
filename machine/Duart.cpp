@@ -167,6 +167,16 @@ namespace rosco {
                 update();
             }
 
+            std::uint8_t Duart::rxTake() {
+                std::uint8_t c = 0;
+                if (!rxA.empty()) {
+                    c = rxA.front();
+                    rxA.pop_front();
+                }
+                update();
+                return c;
+            }
+
             void Duart::poll() {
 #ifdef R68K_PAGE_IO
                 if (counterRunning) {

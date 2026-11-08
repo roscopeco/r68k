@@ -140,6 +140,20 @@ struct NoBusErrors {
 extern "C" {
     rosco::m68k::emu::AddressDecoder* __mem;
     rosco::m68k::emu::Duart* __duart = nullptr;
+
+    // The console calls of r68k's own firmware.  With -d the DUART model
+    // reads stdin as well (Duart::poll), so a key it holds comes first.
+    static bool console_check() {
+        return (__duart != nullptr && __duart->rxHeld()) || check_char();
+    }
+
+    static char console_read() {
+        while (__duart != nullptr && __duart->rxHeld()) {
+            char c = (char) __duart->rxTake();
+            if (c) return c;                // read_char() skips NULs too
+        }
+        return read_char();
+    }
     std::fstream ifs("rosco_sd.bin", std::ios::binary | std::ios::ate | std::ios::in | std::ios::out);
 
     int illegal_instruction_handler(int opcode) {
@@ -212,14 +226,14 @@ extern "C" {
                     break;
                 case 4:
                     // check_char
-                    r = check_char();
+                    r = console_check();
                     m68k_set_reg(M68K_REG_D0, r ? 1 : 0);
 
                     break;
                 case 5:
                     // read_char
                     cout << flush;
-                    c = read_char();
+                    c = console_read();
                     cout << flush;
                     m68k_set_reg(M68K_REG_D0, c);
 
@@ -316,7 +330,7 @@ extern "C" {
                     
                     while (chars_read++ < 80) {
                         cout << flush;
-                        c = read_char();
+                        c = console_read();
                         cout << flush;
 
                         if (c == 0x0D) {
@@ -355,7 +369,7 @@ extern "C" {
 
                     while (--chars_left) {
                         cout << flush;
-                        c = read_char();
+                        c = console_read();
                         cout << flush;
 
                         if (c == 0x0D) {
@@ -378,7 +392,7 @@ extern "C" {
                 case 0xD5:
                     // READCHAR
                     cout << flush;
-                    c = read_char();
+                    c = console_read();
                     cout << flush;
                     m68k_set_reg(M68K_REG_D1, c);
 
@@ -390,7 +404,7 @@ extern "C" {
                     break;
                 case 0xD7:
                     // CHECKINPUT
-                    r = check_char();
+                    r = console_check();
                     m68k_set_reg(M68K_REG_D1, r ? 1 : 0);
 
                     break;
@@ -490,7 +504,7 @@ extern "C" {
                     
                     while (--chars_left) {
                         cout << flush;
-                        c = read_char();
+                        c = console_read();
                         cout << flush;
 
                         if (c == 0x0D) {
